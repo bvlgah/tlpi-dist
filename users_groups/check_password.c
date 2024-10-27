@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -28,6 +28,7 @@
 #include <limits.h>
 #include <pwd.h>
 #include <shadow.h>
+#include <crypt.h>
 #include "tlpi_hdr.h"
 
 int

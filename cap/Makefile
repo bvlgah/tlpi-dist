@@ -1,6 +1,6 @@
 include ../Makefile.inc
 
-GEN_EXE = 
+GEN_EXE =
 
 LINUX_EXE = cap_launcher cap_text check_password_caps \
 	    demo_file_caps \
@@ -18,7 +18,7 @@ allgen : ${GEN_EXE}
 LDLIBS = ${IMPL_LDLIBS} ${LINUX_LIBCAP} ${LINUX_LIBCRYPT}
         # Some programs that we build here need libcap and libcrypt
 
-clean : 
+clean :
 	${RM} ${EXE} *.o
 
 showall :

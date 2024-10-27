@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -25,31 +25,34 @@
 */
 #define _GNU_SOURCE
 #include <unistd.h>
+#include <grp.h>
+#include <limits.h>
 #include "userns_functions.h"
 #include "tlpi_hdr.h"
 
 static void
 usage(char *pname)
 {
-    fprintf(stderr, "Usage: %s [-u UID] [-g GID] [-v] command [arg...]\n",
-            pname);
+    fprintf(stderr, "Usage: %s [-u UID] [-g GID] [-G gid[,gid]...] [-v] "
+            "command [arg...]\n", pname);
     exit(EXIT_FAILURE);
 }
 
 int
 main(int argc, char *argv[])
 {
-    int newuid, newgid, verbose, opt;
-
     /* Parse command-line options */
 
-    newuid = -1;
-    newgid = -1;
-    verbose = 0;
-    while ((opt = getopt(argc, argv, "g:u:v")) != -1) {
+    uid_t newuid = -1;
+    gid_t newgid = -1;
+    int verbose = 0;
+    char *suppGids= NULL;
+    int opt;
+    while ((opt = getopt(argc, argv, "+g:u:G:v")) != -1) {
         switch (opt) {
         case 'g': newgid = atoi(optarg);        break;
         case 'u': newuid = atoi(optarg);        break;
+        case 'G': suppGids = optarg;            break;
         case 'v': verbose = 1;                  break;
         default:  usage(argv[0]);
         }
@@ -59,6 +62,27 @@ main(int argc, char *argv[])
         usage(argv[0]);
 
     /* Change process credentials as per the options */
+
+    if (suppGids != NULL) {
+        gid_t gidList[NGROUPS_MAX];
+
+        int ngroups = 0;
+        char *p;
+        for (;;) {
+            p = strtok((ngroups == 0) ? suppGids : NULL, " ,");
+            if (p == NULL)
+                break;
+
+            if (ngroups >= NGROUPS_MAX)
+                fatal("-G: too many groups");
+
+            gidList[ngroups] = atoi(p);
+            ngroups++;
+        }
+
+        if (setgroups(ngroups, gidList) == -1)
+            errExit("setgroups");
+    }
 
     if (newgid != -1) {
         if (setresgid(newgid, newgid, newgid) == -1)

@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -31,13 +31,13 @@
 #include <pthread.h>
 #include "tlpi_hdr.h"
 
+static int totThreads = 0;      /* Total number of threads created */
+static int numLive = 0;         /* Total number of threads still alive or
+                                   terminated but not yet joined */
 static pthread_cond_t threadDied = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t threadMutex = PTHREAD_MUTEX_INITIALIZER;
                 /* Protects all of the following global variables */
 
-static int totThreads = 0;      /* Total number of threads created */
-static int numLive = 0;         /* Total number of threads still alive or
-                                   terminated but not yet joined */
 static int numUnjoined = 0;     /* Number of terminated threads that
                                    have not yet been joined */
 enum tstate {                   /* Thread states */

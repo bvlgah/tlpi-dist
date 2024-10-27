@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <fcntl.h>
 
 #define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -48,26 +49,35 @@
    placed in *instrCnt. */
 
 static struct sock_filter *
-fetchFilter(pid_t pid, int filterIndex, int *instrCnt)
+fetchFilter(pid_t pid, int filterIndex, int *instrCnt, bool quiet)
 {
-    struct sock_filter *filterProg;
-    int icnt;
-
     /* Attach to the target process and wait for it to be stopped by
        the attach operation */
 
-    if (ptrace(PTRACE_ATTACH, pid, 0, 0) == -1)
-        errExit("ptrace - PTRACE_ATTACH");
+    if (ptrace(PTRACE_ATTACH, pid, 0, 0) == -1) {
+        /* E.g., attempting to attach to a kernel thread gives EPERM */
+        if (!quiet)
+            fprintf(stderr, "%ld: could not PTRACE_ATTACH (%s)\n", (long) pid,
+                    strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     if (waitpid(pid, NULL, 0) == -1)
         errExit("waitpid");
 
     /* Discover the number of instructions in the BPF filter */
 
-    icnt = ptrace(PTRACE_SECCOMP_GET_FILTER, pid, filterIndex, NULL);
+    int icnt = ptrace(PTRACE_SECCOMP_GET_FILTER, pid, filterIndex, NULL);
     if (icnt == -1) {
-        if (errno == ENOENT) {
-            fprintf(stderr, "No BPF program exists at index %d\n", filterIndex);
+        if (errno == EINVAL) {
+            if (!quiet)
+                fprintf(stderr, "%ld: does not have any BPF filters\n",
+                        (long) pid);
+            exit(EXIT_FAILURE);
+        } else if (errno == ENOENT) {
+            if (!quiet)
+                fprintf(stderr, "%ld: no BPF program exists at index %d\n",
+                        (long) pid, filterIndex);
             exit(EXIT_FAILURE);
         } else if (errno == EACCES) {   /* As documented in ptrace(2)... */
             fprintf(stderr, "You lack the CAP_SYS_ADMIN capability; "
@@ -80,6 +90,7 @@ fetchFilter(pid_t pid, int filterIndex, int *instrCnt)
 
     /* Allocate a buffer and fetch the content of the BPF filter */
 
+    struct sock_filter *filterProg;
     filterProg = calloc(icnt, sizeof(struct sock_filter));
     if (filterProg == NULL)
         errExit("calloc");
@@ -99,9 +110,7 @@ fetchFilter(pid_t pid, int filterIndex, int *instrCnt)
 static void
 dumpFilter(char *pathname, struct sock_filter *filterProg, int instrCnt)
 {
-    int fd;
-
-    fd = open(pathname, O_CREAT | O_TRUNC | O_WRONLY, S_IRUSR | S_IWUSR);
+    int fd = open(pathname, O_CREAT | O_TRUNC | O_WRONLY, S_IRUSR | S_IWUSR);
     if (fd == -1)
         errExit("open");
 
@@ -110,31 +119,54 @@ dumpFilter(char *pathname, struct sock_filter *filterProg, int instrCnt)
 
     if (close(fd) == -1)
         errExit("close");
+}
 
-    fprintf(stderr, "Dumped %d BPF instructions\n", instrCnt);
+static void
+usageError(char *pname, char *msg)
+{
+    fprintf(stderr, "%s", msg);
+    fprintf(stderr, "Usage: %s [-q] PID dump-file [filter-index]\n", pname);
+    fprintf(stderr, "       <filter-index> defaults to 0 (the most recently "
+                    "installed filter)\n");
+    fprintf(stderr, "       -q    Quiet mode; don't print messages on success "
+                    "or on expected errors\n");
+    exit(EXIT_FAILURE);
 }
 
 int
 main(int argc, char *argv[])
 {
-    struct sock_filter *filterProg;
-    int filterIndex;
-    int instrCnt;       /* Number of instructions in BPF filter */
-    pid_t pid;
-
-    if (argc < 2 || strcmp(argv[1], "--help") == 0) {
-        fprintf(stderr, "%s PID dump-file [filter-index]\n", argv[0]);
-        exit(EXIT_FAILURE);
+    bool quiet = false;
+            /* If set true, don't produce output on success or for expected
+               errors. In this case, the exit status tells us whether or not a
+               BPF filter was dumped. */
+    int opt;
+    while ((opt = getopt(argc, argv, "q")) != -1) {
+        switch (opt) {
+        case 'q':
+            quiet = true;
+            break;
+        default:
+            usageError(argv[0], "Bad option\n");
+        }
     }
 
-    pid = atoi(argv[1]);
-    filterIndex = (argc > 3) ? atoi(argv[3]) : 0;
+    if (optind + 2 > argc)
+        usageError(argv[0], "Missing arguments\n");
 
-    filterProg = fetchFilter(pid, filterIndex, &instrCnt);
+    pid_t pid = atoi(argv[optind]);
+    int filterIndex = (argc > optind + 2) ? atoi(argv[optind + 2]) : 0;
 
-    dumpFilter(argv[2], filterProg, instrCnt);
+    int instrCnt;       /* Number of instructions in BPF filter */
+    struct sock_filter *filterProg = fetchFilter(pid, filterIndex, &instrCnt,
+                                                 quiet);
 
+    dumpFilter(argv[optind + 1], filterProg, instrCnt);
     free(filterProg);
+
+    if (!quiet)
+        printf("%ld: dumped %d BPF instructions from filter %d\n", (long) pid,
+                instrCnt, filterIndex);
 
     exit(EXIT_SUCCESS);
 }

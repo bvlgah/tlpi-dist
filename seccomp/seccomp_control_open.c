@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -12,8 +12,9 @@
 
 /* seccomp_control_open.c
 
-   A simple seccomp filter example. Install a filter that triggers
-   different failures in open(), depending on flags argument.
+   A simple seccomp filter example. Install a filter that triggers different
+   failures in open()/openat(), depending on the flags argument given to the
+   call.
 */
 #define _GNU_SOURCE
 #include <stddef.h>
@@ -24,10 +25,6 @@
 #include <linux/seccomp.h>
 #include <sys/prctl.h>
 #include "tlpi_hdr.h"
-
-/* For the x32 ABI, all system call numbers have bit 30 set */
-
-#define X32_SYSCALL_BIT         0x40000000
 
 /* The following is a hack to allow for systems (pre-Linux 4.14) that don't
    provide SECCOMP_RET_KILL_PROCESS, which kills (all threads in) a process.
@@ -50,42 +47,60 @@ install_filter(void)
     struct sock_filter filter[] = {
         /* Load architecture */
 
-        BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                (offsetof(struct seccomp_data, arch))),
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, arch)),
 
-        /* Kill the process if the architecture is not what we expect */
+        /* Kill the process if the architecture is not what we expect. We use
+           some #if logic to craft a check for either x86-64 or AArch64. */
 
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_X86_64, 0, 2),
+#if defined __x86_64
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_X86_64, 1, 0),
+#elif defined __aarch64__
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_AARCH64, 1, 0),
+#else
+        /* Any other architecture just falls through to the KILL_PROCESS */
+#endif
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
 
         /* Load system call number */
 
-        BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, nr))),
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
 
+#if defined __x86_64
         /* Kill the process if this is an x32 system call (bit 30 is set) */
 
+#define X32_SYSCALL_BIT 0x40000000
         BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, X32_SYSCALL_BIT, 0, 1),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
+#endif
 
-        /* Allow syscalls other than open() and openat() */
+#ifdef __NR_open    /* Some architectures (e.g., AArch64) don't have open() */
 
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_open, 2, 0),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_openat, 3, 0),
-        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+        /* Is this an open() syscall? */
+
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_open, 0, 2),
 
         /* Load second argument of open() (flags) into accumulator */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, args[1]))),
+                 offsetof(struct seccomp_data, args[1])),
 
-        /* Jump forward to flags processing */
+        /* Jump to flags processing */
 
-        BPF_JUMP(BPF_JMP | BPF_JA, 1, 0, 0),
+        BPF_JUMP(BPF_JMP | BPF_JA, 3, 0, 0),
+#endif
+
+        /* Is this an openat() syscall? */
+
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_openat, 1, 0),
+
+        /* Allow all other syscalls */
+
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
 
         /* Load third argument of openat() (flags) into accumulator */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, args[2]))),
+                 offsetof(struct seccomp_data, args[2])),
 
         /* Process flags argument */
 
@@ -107,21 +122,16 @@ install_filter(void)
     };
 
     struct sock_fprog prog = {
-        .len = (unsigned short) (sizeof(filter) / sizeof(filter[0])),
+        .len = sizeof(filter) / sizeof(filter[0]),
         .filter = filter,
     };
 
-    if (seccomp(SECCOMP_SET_MODE_FILTER, 0, &prog))
+    if (seccomp(SECCOMP_SET_MODE_FILTER, 0, &prog) == -1)
         errExit("seccomp");
-    /* On Linux 3.16 and earlier (or if we have old glibc headers that
-       don't define '__NR_seccomp', we must instead use:
-            if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog))
-                errExit("prctl-PR_SET_SECCOMP");
-    */
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
         errExit("prctl");

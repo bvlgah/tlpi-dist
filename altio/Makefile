@@ -10,7 +10,7 @@ all : ${EXE}
 
 allgen : ${GEN_EXE}
 
-clean : 
+clean :
 	${RM} ${EXE} *.o
 
 showall :
@@ -21,4 +21,3 @@ ${EXE} : ${TLPI_LIB}		# True as a rough approximation
 multithread_epoll_wait: multithread_epoll_wait.o
 	${CC} -o $@ multithread_epoll_wait.o \
 		${CFLAGS} ${IMPL_LDLIBS} ${IMPL_THREAD_FLAGS}
-

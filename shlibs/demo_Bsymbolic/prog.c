@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -7,6 +7,8 @@
 * later version. This program is distributed without any warranty.  See   *
 * the file COPYING.gpl-v3 for details.                                    *
 \*************************************************************************/
+
+/* Supplementary program for Chapter 41 */
 
 /* prog.c
 
@@ -23,10 +25,10 @@ xyz(void)
 int
 main(int argc, char*argv[])
 {
-    void func1(void), func2(void), func3(void);
+    void foo1(void), foo2(void), foo3(void);
 
-    func1();
-    func2();
+    foo1();
+    foo2();
 
     exit(EXIT_SUCCESS);
 }

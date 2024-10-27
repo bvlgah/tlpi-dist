@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -30,10 +30,6 @@
 #include <sys/prctl.h>
 #include "tlpi_hdr.h"
 
-/* For the x32 ABI, all system call numbers have bit 30 set */
-
-#define X32_SYSCALL_BIT         0x40000000
-
 #ifndef SECCOMP_RET_LOG
 #define SECCOMP_RET_LOG         0x7ffc0000U
 #endif
@@ -60,7 +56,7 @@ install_filter(void)
         /* Load architecture */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                (offsetof(struct seccomp_data, arch))),
+                offsetof(struct seccomp_data, arch)),
 
         /* Kill the process if the architecture is not what we expect */
 
@@ -69,10 +65,11 @@ install_filter(void)
         /* Load system call number */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, nr))),
+                 offsetof(struct seccomp_data, nr)),
 
         /* Kill the process if this is an x32 system call (bit 30 is set) */
 
+#define X32_SYSCALL_BIT         0x40000000
         BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, X32_SYSCALL_BIT, 0, 1),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
 
@@ -82,7 +79,7 @@ install_filter(void)
     };
 
     struct sock_fprog prog = {
-        .len = (unsigned short) (sizeof(filter) / sizeof(filter[0])),
+        .len = sizeof(filter) / sizeof(filter[0]),
         .filter = filter,
     };
 

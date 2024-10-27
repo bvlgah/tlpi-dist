@@ -19,7 +19,7 @@ LDLIBS = ${IMPL_LDLIBS} ${IMPL_THREAD_FLAGS}
 psem_timedwait: psem_timedwait.o
 	${CC} -o $@ psem_timedwait.o ${CFLAGS} ${LDLIBS} ${LINUX_LIBRT}
 
-clean : 
+clean :
 	${RM} ${EXE} *.o
 
 showall :

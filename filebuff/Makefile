@@ -1,6 +1,6 @@
 include ../Makefile.inc
 
-GEN_EXE = copy mix23_linebuff mix23io \
+GEN_EXE = mix23_linebuff mix23io \
 	  write_bytes \
 	  write_bytes_fdatasync \
 	  write_bytes_fsync \
@@ -14,7 +14,7 @@ all : ${EXE}
 
 allgen : ${GEN_EXE}
 
-clean : 
+clean :
 	${RM} ${EXE} *.o
 
 write_bytes_fdatasync : write_bytes.c

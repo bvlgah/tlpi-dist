@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -126,9 +126,9 @@ main(int argc, char *argv[])
                 else
                     errExit("read");    /* Some other error */
             }
-
-            /* Perform any actions that should be taken in response to signal */
         }
+
+        /* Perform any actions that should be taken in response to signal */
     }
 
     /* Examine file descriptor sets returned by select() to see

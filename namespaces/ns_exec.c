@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -14,7 +14,7 @@
 
    Join a namespace using setns() and execute a command in the namespace.
    This is program is similar in concept to nsenter(1) (however, that
-   program allows multiple namespaces to be joined), but has a less
+   program allows multiple namespaces to be joined), but has a simpler
    command-line interface.
 
    See https://lwn.net/Articles/531381/
@@ -62,9 +62,11 @@ main(int argc, char *argv[])
     }
 
     if (argc < optind + 2)
-        usage(argv[1]);
+        usage(argv[0]);
 
-    /* Get file descriptor for namespace */
+    /* Get file descriptor for namespace; the file descriptor is opened with
+       O_CLOEXEC so as to ensure that it is not inherited by the program that
+       is later executed. */
 
     int fd = open(argv[optind], O_RDONLY | O_CLOEXEC);
     if (fd == -1)

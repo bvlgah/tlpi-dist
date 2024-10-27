@@ -28,37 +28,37 @@ import (
 // A namespace is uniquely identified by the combination of a device ID
 // and an inode number.
 
-type NamespaceID struct {
+type namespaceID struct {
 	device    uint64 // dev_t
 	inode_num uint64 // ino_t
 }
 
 // For each namespace, we record the child namespaces and the member processes.
 
-type NamespaceAttribs struct {
-	children []NamespaceID // Child namespaces
+type namespaceAttribs struct {
+	children []namespaceID // Child namespaces
 	pids     []int         // Member processes
 }
 
 // The following map records all of the namespaces that we visit.
 
-var NSList = make(map[NamespaceID]*NamespaceAttribs)
+var nsList = make(map[namespaceID]*namespaceAttribs)
 
-// While adding the first namespace to 'NSList', we'll discover the
+// While adding the first namespace to 'nsList', we'll discover the
 // ancestor of all PID namespaces (the root of the PID namespace
-// hierarchy).  We record that namespace in 'initialPidNS'.
+// hierarchy). We record that namespace in 'initialPidNS'.
 
-var initialPidNS NamespaceID
+var initialPidNS namespaceID
 
 // Create and return a new namespace ID using the device ID and inode
 // number of the namespace referred to by 'namespaceFD'.
 
-func NewNamespaceID(namespaceFD int) NamespaceID {
+func newNamespaceID(namespaceFD int) namespaceID {
 	var sb syscall.Stat_t
 	var err error
 
 	// Obtain the device ID and inode number of the namespace file.
-	// These values together form the key for the 'NSList' map entry.
+	// These values together form the key for the 'nsList' map entry.
 
 	err = syscall.Fstat(namespaceFD, &sb)
 	if err != nil {
@@ -66,17 +66,17 @@ func NewNamespaceID(namespaceFD int) NamespaceID {
 		os.Exit(1)
 	}
 
-	return NamespaceID{sb.Dev, sb.Ino}
+	return namespaceID{sb.Dev, sb.Ino}
 }
 
-// AddNamespace() adds the namespace referred to by the file descriptor
-// 'namespaceFD' to the 'NSList' map (creating an entry in the map if one does
+// addNamespace() adds the namespace referred to by the file descriptor
+// 'namespaceFD' to the 'nsList' map (creating an entry in the map if one does
 // not already exist) and optionally adds the PID specified in 'pid' to the
 // list of PIDs that are resident in that namespace.
 //
 // This function is recursive, calling itself to ensure that an entry is also
 // created for the parent PID namespace of the namespace referred to by
-// 'namespaceFD'.  Once that has been done, the namespace referred to by
+// 'namespaceFD'. Once that has been done, the namespace referred to by
 // 'namespaceFD' is made a child of the parent namespace. (Note that, except
 // in the case of the initial PID namespace, a parent namespace must exist,
 // since it is pinned into existence by the existence of the child namespace
@@ -92,18 +92,18 @@ func NewNamespaceID(namespaceFD int) NamespaceID {
 // the device ID and inode number corresponding to the user namespace file
 // referred to by 'namespaceFD').
 
-func AddNamespace(namespaceFD int, pid int) NamespaceID {
+func addNamespace(namespaceFD int, pid int) namespaceID {
 
 	const NS_GET_PARENT = 0xb702 // ioctl() to get parent namespace
 
-	nsid := NewNamespaceID(namespaceFD)
+	nsid := newNamespaceID(namespaceFD)
 
-	if _, fnd := NSList[nsid]; !fnd {
+	if _, fnd := nsList[nsid]; !fnd {
 
-		// Namespace entry does not yet exist in 'NSList' map;
+		// Namespace entry does not yet exist in 'nsList' map;
 		// create it.
 
-		NSList[nsid] = new(NamespaceAttribs)
+		nsList[nsid] = new(namespaceAttribs)
 
 		// Get a file descriptor for the parent namespace.
 
@@ -131,12 +131,12 @@ func AddNamespace(namespaceFD int, pid int) NamespaceID {
 			// has an entry in the map. Don't record the
 			// process as being a member of that namespace.
 
-			p := AddNamespace(parentFD, -1)
+			p := addNamespace(parentFD, -1)
 
 			// Make the current namespace entry ('nsid') a child
 			// of the parent/owning user namespace entry.
 
-			NSList[p].children = append(NSList[p].children, nsid)
+			nsList[p].children = append(nsList[p].children, nsid)
 
 			syscall.Close(parentFD)
 		}
@@ -145,18 +145,18 @@ func AddNamespace(namespaceFD int, pid int) NamespaceID {
 	// Add PID to PID list for this namespace entry.
 
 	if pid > 0 {
-		NSList[nsid].pids = append(NSList[nsid].pids, pid)
+		nsList[nsid].pids = append(nsList[nsid].pids, pid)
 	}
 
 	return nsid
 }
 
-// AddProcessNamespace() processes a single /proc/PID/ns/pid entry, creating
+// addProcessNamespace() processes a single /proc/PID/ns/pid entry, creating
 // a namespace entry for that file and, as necessary, namespace entries for
-// all ancestor namespaces going back to the initial PID namespace.  'pid'
+// all ancestor namespaces going back to the initial PID namespace. 'pid'
 // is a string containing a PID.
 
-func AddProcessNamespace(pid string) {
+func addProcessNamespace(pid string) {
 
 	// Obtain a file descriptor that refers to the PID namespace
 	// corresponding to 'pid'.
@@ -173,15 +173,15 @@ func AddProcessNamespace(pid string) {
 	// PID namespaces.
 
 	npid, _ := strconv.Atoi(pid)
-	AddNamespace(namespaceFD, npid)
+	addNamespace(namespaceFD, npid)
 
 	syscall.Close(namespaceFD)
 }
 
-// PrintAllPIDsFor() looks up the 'NStgid' field in the /proc/PID/status
+// printAllPIDsFor() looks up the 'NStgid' field in the /proc/PID/status
 // file of 'pid' and displays the set of PIDs contained in that field
 
-func PrintAllPIDsFor(pid int) {
+func printAllPIDsFor(pid int) {
 
 	sfile := "/proc/" + strconv.Itoa(pid) + "/status"
 
@@ -215,31 +215,31 @@ func PrintAllPIDsFor(pid int) {
 
 // Print a sorted list of the PIDs that are members of a namespace.
 
-func PrintMemberPIDs(indent string, pids []int) {
+func printMemberPIDs(indent string, pids []int) {
 
 	sort.Ints(pids)
 
 	for _, pid := range pids {
 		fmt.Print(indent + "        ")
-		PrintAllPIDsFor(pid)
+		printAllPIDsFor(pid)
 		fmt.Println()
 	}
 }
 
-// DisplayNamespaceTree() recursively displays the namespace tree rooted at
+// displayNamespaceTree() recursively displays the namespace tree rooted at
 // 'nsid'. 'level' is our current level in the tree, and is used to produce
 // suitably indented output.
 
-func DisplayNamespaceTree(nsid NamespaceID, level int) {
+func displayNamespaceTree(nsid namespaceID, level int) {
 
 	indent := strings.Repeat(" ", level*4)
 
 	fmt.Println(indent, nsid)
 
-	PrintMemberPIDs(indent, NSList[nsid].pids)
+	printMemberPIDs(indent, nsList[nsid].pids)
 
-	for _, child := range NSList[nsid].children {
-		DisplayNamespaceTree(child, level+1)
+	for _, child := range nsList[nsid].children {
+		displayNamespaceTree(child, level+1)
 	}
 }
 
@@ -257,11 +257,11 @@ func main() {
 
 	for _, f := range files {
 		if f.Name()[0] >= '1' && f.Name()[0] <= '9' {
-			AddProcessNamespace(f.Name())
+			addProcessNamespace(f.Name())
 		}
 	}
 
 	// Display the namespace tree rooted at the initial PID namespace.
 
-	DisplayNamespaceTree(initialPidNS, 0)
+	displayNamespaceTree(initialPidNS, 0)
 }

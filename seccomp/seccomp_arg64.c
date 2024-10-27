@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -15,7 +15,7 @@
    Some system call arguments can be 64 bits in size, for example pointers
    and the 'off_t' argument of system calls such as lseek(). The
    'seccomp_data' structure allows for this: the elements of 'args' are each
-   64 bits in size.  However, the BBF accumulator register is only 32 bits
+   64 bits in size.  However, the BPF accumulator register is only 32 bits
    in size.  Therefore, 64-bit system call arguments must be dealt with in
    two pieces.  This program provides a simple example of how to do this.
 
@@ -36,10 +36,6 @@
 #include <linux/seccomp.h>
 #include <sys/prctl.h>
 #include "tlpi_hdr.h"
-
-/* For the x32 ABI, all system call numbers have bit 30 set */
-
-#define X32_SYSCALL_BIT         0x40000000
 
 /* The following is a hack to allow for systems (pre-Linux 4.14) that don't
    provide SECCOMP_RET_KILL_PROCESS, which kills (all threads in) a process.
@@ -64,7 +60,7 @@ install_filter(void)
         /* Load architecture */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                (offsetof(struct seccomp_data, arch))),
+                offsetof(struct seccomp_data, arch)),
 
         /* Kill the process if the architecture is not what we expect */
 
@@ -73,10 +69,11 @@ install_filter(void)
         /* Load system call number */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, nr))),
+                 offsetof(struct seccomp_data, nr)),
 
         /* Kill the process if this is an x32 system call (bit 30 is set) */
 
+#define X32_SYSCALL_BIT         0x40000000
         BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, X32_SYSCALL_BIT, 0, 1),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
 
@@ -95,7 +92,7 @@ install_filter(void)
            with 64-bit arguments. */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, args[1]) + sizeof(__u32))),
+                 offsetof(struct seccomp_data, args[1]) + sizeof(__u32)),
         BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | 2),
 
@@ -103,7 +100,7 @@ install_filter(void)
            if the value is > 1000; otherwise allow the system call */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, args[1]))),
+                 offsetof(struct seccomp_data, args[1])),
         BPF_JUMP(BPF_JMP | BPF_JGT | BPF_K, 1000, 0, 1),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | 1),
 
@@ -111,25 +108,19 @@ install_filter(void)
     };
 
     struct sock_fprog prog = {
-        .len = (unsigned short) (sizeof(filter) / sizeof(filter[0])),
+        .len = sizeof(filter) / sizeof(filter[0]),
         .filter = filter,
     };
 
     if (seccomp(SECCOMP_SET_MODE_FILTER, 0, &prog) == -1)
         errExit("seccomp");
-    /* On Linux 3.16 and earlier, we must instead use:
-            if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog))
-                errExit("prctl-PR_SET_SECCOMP");
-    */
 }
 
 static void
 seek_test(int fd, off_t offset)
 {
-    off_t ret;
-
     printf("Seek to byte %lld: ", (long long) offset);
-    ret = lseek(fd, offset, SEEK_SET);
+    off_t ret = lseek(fd, offset, SEEK_SET);
     if (ret == 0)
         printf("succeeded\n");
     else
@@ -137,16 +128,14 @@ seek_test(int fd, off_t offset)
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-    int fd;
-
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
         errExit("prctl");
 
     install_filter();
 
-    fd = open("/dev/zero", O_RDWR);
+    int fd = open("/dev/zero", O_RDWR);
     if (fd == -1)
         errExit("open");
 

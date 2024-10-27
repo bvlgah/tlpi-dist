@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -39,8 +39,7 @@ main(int argc, char *argv[])
     memset(&ut, 0, sizeof(struct utmpx));
     ut.ut_type = USER_PROCESS;          /* This is a user login */
     strncpy(ut.ut_user, argv[1], sizeof(ut.ut_user));
-    if (time((time_t *) &ut.ut_tv.tv_sec) == -1)
-        errExit("time");                /* Stamp with current time */
+    ut.ut_tv.tv_sec = time(NULL);       /* Stamp with current time */
     ut.ut_pid = getpid();
 
     /* Set ut_line and ut_id based on the terminal associated with
@@ -75,7 +74,7 @@ main(int argc, char *argv[])
        except for changes below */
 
     ut.ut_type = DEAD_PROCESS;          /* Required for logout record */
-    time((time_t *) &ut.ut_tv.tv_sec);  /* Stamp with logout time */
+    ut.ut_tv.tv_sec = time(NULL);       /* Stamp with logout time */
     memset(&ut.ut_user, 0, sizeof(ut.ut_user));
                                         /* Logout record has null username */
 

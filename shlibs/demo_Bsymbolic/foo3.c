@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -8,24 +8,23 @@
 * the file COPYING.gpl-v3 for details.                                    *
 \*************************************************************************/
 
+/* Supplementary program for Chapter 41 */
+
 /* foo3.c
 
 */
 #include <stdlib.h>
 #include <stdio.h>
 
-void abc(void);
-
 void
 xyz(void)
 {
-    printf("        func3-xyz\n");
+    printf("        foo3-xyz\n");
 }
 
 void
-func3(int x)
+foo3(int x)
 {
-    printf("Called func3\n");
+    printf("Called foo3\n");
     xyz();
-    abc();
 }

@@ -1,6 +1,7 @@
 Gidday!
 
-This is the code for the book "The Linux Programming Interface"
+This is the code for the book "The Linux Programming Interface",
+along with other code that I use in various conference presentations,
 and this is a note from me, the author, Michael Kerrisk.
 
 For instructions on building the programs, see the file BUILDING.
@@ -8,6 +9,10 @@ For instructions on building the programs, see the file BUILDING.
 For notes on changes that have been made to the code since it was
 published in the book, see the file CHANGES.
 
+If you've come here looking for code examples from a particular
+conference presentation that I've made, then after unpacking the
+source code, you should find the desired example(s) at the pathname(s)
+shown in the conference presentation.
 
 Source code licensing
 =====================
@@ -72,10 +77,10 @@ of the chapter relating to that file.
 
 Directory       Files for Chapter...
 
-lib             This contains library routines used by other 
-                programs. The tlpi_hdr.h and error_functions.* 
+lib             This contains library routines used by other
+                programs. The tlpi_hdr.h and error_functions.*
                 files are located here.
-                
+
 progconc        3 (System Programming Concepts)
 
 fileio          4 and 5 (File I/O)
@@ -132,11 +137,11 @@ cap             39 (Capabilities)
 loginacct       40 (Login Accounting)
 
 shlibs          41 and 42 (Shared Libraries)
-    
+
 pipes           44 (Pipes and FIFOs)
 
 svipc           45 (System V IPC)
-    
+
 svmsg           46 (System V Message Queues)
 
 svsem           47 (System V Semaphores)

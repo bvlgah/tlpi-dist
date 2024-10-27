@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -47,7 +47,7 @@ main(int argc, char *argv[])
     /* memalign() allocates a block of memory aligned on an address that
        is a multiple of its first argument. By specifying this argument as
        2 * 'alignment' and then adding 'alignment' to the returned pointer,
-       we ensure that 'buf' is aligned on a non-power-of-two multiple of
+       we ensure that 'buf' is aligned on an odd multiple of
        'alignment'. We do this to ensure that if, for example, we ask
        for a 256-byte aligned buffer, we don't accidentally get
        a buffer that is also aligned on a 512-byte boundary. */

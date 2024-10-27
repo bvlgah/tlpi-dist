@@ -4,9 +4,9 @@
 # (The library directory is first so that the library gets built first)
 #
 
-DIRS = 	lib \
-    	acl altio \
-	cap \
+DIRS =	lib \
+	acl altio \
+	cap cgroups \
 	daemons dirs_links \
 	filebuff fileio filelock files filesys getopt \
 	inotify \
@@ -38,13 +38,13 @@ BUILD_DIRS = ${DIRS}
 
 # Dummy targets for building and clobbering everything in all subdirectories
 
-all: 	
+all:
 	@ echo ${BUILD_DIRS}
 	@ for dir in ${BUILD_DIRS}; do (cd $${dir}; ${MAKE}) ; \
 		if test $$? -ne 0; then break; fi; done
 
-allgen: 
+allgen:
 	@ for dir in ${BUILD_DIRS}; do (cd $${dir}; ${MAKE} allgen) ; done
 
-clean: 
+clean:
 	@ for dir in ${BUILD_DIRS}; do (cd $${dir}; ${MAKE} clean) ; done

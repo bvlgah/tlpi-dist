@@ -2,7 +2,7 @@ include ../Makefile.inc
 
 GEN_EXE = t_getpwent t_getpwnam_r
 
-LINUX_EXE = check_password idshow
+LINUX_EXE = check_password
 
 EXE = ${GEN_EXE} ${LINUX_EXE}
 
@@ -10,7 +10,7 @@ all : ${EXE}
 
 allgen : ${GEN_EXE}
 
-clean : 
+clean :
 	${RM} ${EXE} *.o
 
 check_password : check_password.o

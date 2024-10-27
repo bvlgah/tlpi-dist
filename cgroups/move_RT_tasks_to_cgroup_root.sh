@@ -9,8 +9,8 @@
 # This script must be run as superuser.
 #
 # The script by default assumes that the cgroup v2 hierarchy
-# is mounted at /sys/fs/cgroup/unified. If the hierarchy is 
-# mounted elswhere, then that location should be specified as
+# is mounted at /sys/fs/cgroup/unified. If the hierarchy is
+# mounted elsewhere, then that location should be specified as
 # the (sole) command-line argument to the script.
 
 # (C) 2019 Michael Kerrisk. Licensed under the GNU GPL v2 or later

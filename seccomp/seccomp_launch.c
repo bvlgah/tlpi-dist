@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -16,6 +16,14 @@
 
    Launch a program with arguments, after first (optionally) loading
    previously generated BPF filter(s) from specified file(s).
+
+   Note that as well as allowing execve(), the filter(s) may need to allow the
+   system calls that the dynamic linker uses to load shared libraries. More
+   generally add-filter-after-exec functionality is a difficult problem that
+   currently has no good solution. See this mail thread for a discussion of
+   the issues and the shortfalls of using LD_PRELOAD to solve the problem:
+   "Request for a "enable on execve" mode for Seccomp filters" (Oct 2020)
+   https://lore.kernel.org/all/202010281500.855B950FE@keescook/T/#mf1d6a1c1e2ed67fdf54770785197812aa3d96a67
 */
 #define _GNU_SOURCE
 #include <fcntl.h>
@@ -42,11 +50,6 @@ static void
 loadFilter(char *filterPathname)
 {
     static bool noNewPrivsAlreadySet = false;
-    struct sock_fprog fprog;
-    struct sock_filter *filter;
-    int filterSize;
-    struct stat sb;
-    int fd;
 
     if (!noNewPrivsAlreadySet) {        /* Only need to do this once */
         if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
@@ -57,20 +60,21 @@ loadFilter(char *filterPathname)
     /* Open the file, determine its size, allocate a buffer of that size,
        and read the file into the buffer */
 
-    fd = open(filterPathname, O_RDONLY);
+    int fd = open(filterPathname, O_RDONLY);
     if (fd == -1)
         errExit("open");
 
+    struct stat sb;
     if (fstat(fd, &sb) == -1)
         errExit("fstat");
 
-    filterSize = sb.st_size;
+    int filterSize = sb.st_size;
     if (filterSize % sizeof(struct sock_filter) != 0) {
         fprintf(stderr, "Filter has odd size\n");
         exit(EXIT_FAILURE);
     }
 
-    filter = malloc(filterSize);
+    struct sock_filter *filter = malloc(filterSize);
     if (filter == NULL)
         errExit("malloc");
 
@@ -84,6 +88,7 @@ loadFilter(char *filterPathname)
 
     /* Install the BPF filter blob */
 
+    struct sock_fprog fprog;
     fprog.len = filterSize / sizeof(struct sock_filter);
     fprog.filter = filter;
 
@@ -102,10 +107,9 @@ usageError(char *pname, char *msg)
 int
 main(int argc, char *argv[])
 {
-    int opt;
-
     /* Command-line parsing */
 
+    int opt;
     while ((opt = getopt(argc, argv, "f:")) != -1) {
         switch (opt) {
 

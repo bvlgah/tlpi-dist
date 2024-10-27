@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU Lesser General Public License as published   *
@@ -28,20 +28,18 @@
    Returns: 0 on success or -1 on error. */
 
 int
-modifyCapSetting(cap_flag_t flag, int capability, int setting)
+modifyCapSetting(cap_flag_t flag, cap_value_t capability, int setting)
 {
-    cap_t caps;
-    cap_value_t capList[1];
-
     /* Retrieve caller's current capabilities */
 
-    caps = cap_get_proc();
+    cap_t caps = cap_get_proc();
     if (caps == NULL)
         return -1;
 
     /* Change setting of 'capability' in the 'flag' capability set in 'caps'.
        The third argument, 1, is the number of items in the array 'capList'. */
 
+    cap_value_t capList[1];
     capList[0] = capability;
     if (cap_set_flag(caps, flag, 1, capList, setting) == -1) {
         cap_free(caps);

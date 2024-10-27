@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -68,7 +68,7 @@ main(int argc, char *argv[])
         in.s_addr = ut->ut_addr_v6[0];
         printf(" %-15.15s ", inet_ntoa(in));
         time_t tv_sec = ut->ut_tv.tv_sec;
-        printf("%s", ctime((time_t *) &tv_sec));
+        printf("%s", ctime(&tv_sec));
     }
 
     endutxent();

@@ -1,6 +1,6 @@
 include ../Makefile.inc
 
-GEN_EXE = 
+GEN_EXE =
 
 LINUX_EXE = vdso_gettimeofday syscall_gettimeofday
 
@@ -10,7 +10,7 @@ all : ${EXE}
 
 allgen : ${GEN_EXE}
 
-clean : 
+clean :
 	${RM} ${EXE} *.o
 
 vdso_gettimeofday : gettimeofday.c

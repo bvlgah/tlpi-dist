@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -50,7 +50,7 @@ main(int argc, char *argv[])
             if (msqid == -1)
                 errExit("msgget() failed to retrieve old queue ID");
             if (msgctl(msqid, IPC_RMID, NULL) == -1)
-                errExit("msgget() failed to delete old queue");
+                errExit("msgctl() failed to delete old queue");
             printf("Removed old message queue (id=%d)\n", msqid);
 
         } else {                        /* Some other error --> give up */

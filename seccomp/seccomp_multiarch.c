@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -167,7 +167,7 @@ install_filter(void)
         /* [0] Load the architecture value. */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                (offsetof(struct seccomp_data, arch))),
+                offsetof(struct seccomp_data, arch)),
 
         /* [1] Are we on x86-64 architecture? If it is not, jump forward
                to test whether this is the i386 architecture. */
@@ -177,7 +177,7 @@ install_filter(void)
         /* [2] Load the system call number. */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, nr))),
+                 offsetof(struct seccomp_data, nr)),
 
         /* [3] Is this the x86-64 mq_notify() syscall? */
 
@@ -216,7 +216,7 @@ install_filter(void)
         /* [8] Load the system call number. */
 
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                 (offsetof(struct seccomp_data, nr))),
+                 offsetof(struct seccomp_data, nr)),
 
         /* [9] Is this the i386 mq_notify() syscall? If it is not, jump
                forward to allow the syscall. */
@@ -239,7 +239,7 @@ install_filter(void)
     };
 
     struct sock_fprog prog = {
-        .len = (unsigned short) (sizeof(filter) / sizeof(filter[0])),
+        .len = sizeof(filter) / sizeof(filter[0]),
         .filter = filter,
     };
 
@@ -248,7 +248,7 @@ install_filter(void)
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
     const char *no_seccomp_filter_var = "NO_SECCOMP_FILTER";
 

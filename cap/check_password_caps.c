@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -35,13 +35,14 @@
 #include <unistd.h>
 #include <limits.h>
 #include <pwd.h>
+#include <crypt.h>
 #include <shadow.h>
 #include "tlpi_hdr.h"
 
 /* Change setting of capability in caller's effective capabilities */
 
 static int
-modifyCap(int capability, int setting)
+modifyCap(cap_value_t capability, int setting)
 {
     cap_t caps;
     cap_value_t capList[1];
@@ -78,7 +79,7 @@ modifyCap(int capability, int setting)
 }
 
 static int              /* Raise capability in caller's effective set */
-raiseCap(int capability)
+raiseCap(cap_value_t capability)
 {
     return modifyCap(capability, CAP_SET);
 }

@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -7,6 +7,8 @@
 * later version. This program is distributed without any warranty.  See   *
 * the file COPYING.gpl-v3 for details.                                    *
 \*************************************************************************/
+
+/* Supplementary program for Chapter 41 */
 
 /* foo1.c
 
@@ -17,19 +19,12 @@
 void
 xyz(void)
 {
-    printf("        func1-xyz\n");
+    printf("        foo1-xyz\n");
 }
 
 void
-abc(void)
+foo1(int x)
 {
-    printf("        func1-abc\n");
-}
-
-void
-func1(int x)
-{
-    printf("Called func1\n");
+    printf("Called foo1\n");
     xyz();
-    abc();
 }

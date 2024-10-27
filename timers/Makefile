@@ -13,14 +13,14 @@ all : ${EXE}
 allgen : ${GEN_EXE}
 
 LDLIBS = ${IMPL_LDLIBS} ${LINUX_LIBRT} ${IMPL_THREAD_FLAGS}
-	# Many of the programs in this directory need the 
+	# Many of the programs in this directory need the
 	# realtime library, librt; to keep this Makefile simple,
 	# we link *all* of the programs against that library.
 	# Some of the programs in this directory use POSIX threads
 	# and so require building with '-pthread'. To keep the Makefile
 	# simple, we build all of the programs with '-pthread'
 
-clean : 
+clean :
 	${RM} ${EXE} *.o
 
 showall :

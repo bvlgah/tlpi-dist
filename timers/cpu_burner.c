@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -12,68 +12,60 @@
 
 /* cpu_burner.c
 
-   A small program that simply consumes CPU time, displaying the amount of
-   elapsed time that was required to consume each CPU second.
+   A small program that simply consumes CPU time, displaying the rate of CPU
+   consumption during each second.
 */
-#include <sys/times.h>
 #include <time.h>
-#include <signal.h>
 #include "tlpi_hdr.h"
 
-static volatile sig_atomic_t gotSig = 0;
+#define NANO 1000000000L
 
-static void
-handler(int sig)
+static long
+timespecDiff(struct timespec a, struct timespec b)
 {
-    gotSig = 1;
+    return (b.tv_sec - a.tv_sec) * NANO + b.tv_nsec - a.tv_nsec;
 }
 
 int
 main(int argc, char *argv[])
 {
-    time_t prev_cpu_secs;
-    struct timespec curr_cpu;
-    struct timespec curr_rt, prev_rt;
-    struct sigaction sa;
-    int elapsed_us;
+    struct timespec curr_real, prev_cpu;
 
-    sa.sa_handler = handler;
-    sa.sa_flags = 0;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGTERM, &sa, NULL) == -1)
-        errExit("sigaction");
-    if (sigaction(SIGINT, &sa, NULL) == -1)
-        errExit("sigaction");
-
-    prev_cpu_secs = 0;
-    if (clock_gettime(CLOCK_REALTIME, &prev_rt) == -1)
+    struct timespec prev_real;
+    if (clock_gettime(CLOCK_REALTIME, &prev_real) == -1)
+        errExit("clock_gettime");
+    if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &prev_cpu) == -1)
         errExit("clock_gettime");
 
-    /* Loop consuming CPU time until we get sent a signal */
+    /* Loop consuming CPU time. */
 
-    while (!gotSig) {
-        if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &curr_cpu) == -1)
+    int cnt = 0;
+    while (1) {
+        if (clock_gettime(CLOCK_REALTIME, &curr_real) == -1)
             errExit("clock_gettime");
 
-        /* Each time the CPU time clock ticks over to another second,
-           display the amount of time that elapsed since consuming the
-           previous second of CPU time. */
+        long elapsed_real_nsec = timespecDiff(prev_real, curr_real);
 
-        if (curr_cpu.tv_sec > prev_cpu_secs) {
-            if (clock_gettime(CLOCK_REALTIME, &curr_rt) == -1)
+        /* Each time the real time clock ticks over to another second,
+           display the rate of CPU consumption in the interval since the
+           previous second. */
+
+        if (elapsed_real_nsec >= NANO) {
+            struct timespec curr_cpu;
+            if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &curr_cpu) == -1)
                 errExit("clock_gettime");
 
-            elapsed_us = (curr_rt.tv_sec - prev_rt.tv_sec) * 1000000 +
-                         (curr_rt.tv_nsec - prev_rt.tv_nsec) / 1000;
-            printf("[%ld] %ld: elapsed/cpu = %5.3f; %%CPU = %5.3f\n",
-                    (long) getpid(),
-                    (long) curr_cpu.tv_sec, elapsed_us / 1000000.0,
-                    1000000.0 / elapsed_us * 100.0);
-            prev_cpu_secs = curr_cpu.tv_sec;
-            prev_rt = curr_rt;
+            long elapsed_cpu_nsec = timespecDiff(prev_cpu, curr_cpu);
+
+            printf("[%ld]  %%CPU = %5.2f (%d)\n", (long) getpid(),
+                    (double) elapsed_cpu_nsec / elapsed_real_nsec * 100.0,
+                    cnt);
+
+            prev_real = curr_real;
+            prev_cpu = curr_cpu;
+            cnt++;
         }
     }
 
-    printf("Bye!\n");
     exit(EXIT_SUCCESS);
 }

@@ -1,5 +1,5 @@
 /*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
+*                  Copyright (C) Michael Kerrisk, 2024.                   *
 *                                                                         *
 * This program is free software. You may use, modify, and redistribute it *
 * under the terms of the GNU General Public License as published by the   *
@@ -21,10 +21,11 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
+#include <crypt.h>
 #include "tlpi_hdr.h"
 
-static char *str2;              /* Set from argv[2] */
-static int handled = 0;         /* Counts number of calls to handler */
+static char *str2;                  /* Set from argv[2] */
+static volatile int handled = 0;    /* Counts number of calls to handler */
 
 static void
 handler(int sig)

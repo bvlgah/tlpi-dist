@@ -1,23 +1,39 @@
-TARGETS = prog libfoo1.so libfoo2.so libfoo3.so
+LIBS = libfoo1.so libfoo2.so libfoo3.so
+TARGETS = prog ${LIBS}
 
 all: ${TARGETS}
 
-run:
+run: all
 	LD_LIBRARY_PATH=. ./prog
 
-prog: prog.o libfoo1.so libfoo2.so libfoo3.so
-	cc -g -o prog prog.c -L. -lfoo1 -lfoo2 -lfoo3
+prog: prog.o libfoo1.so libfoo2.so
+	${CC} -g -o $@ $^ -Wl,--rpath-link,.
 
-libfoo1.so:
-	cc -g -shared -fPIC -o libfoo1.so foo1.c
+# libfoo3.so is not built with -Bsymbolic, so the local reference to
+# xyz() can be interposed from another object.
 
-libfoo2.so:
-	cc -g -Wl,-Bsymbolic -shared -fPIC -o libfoo2.so foo2.c
+${LIBS}: CFLAGS := ${CFLAGS} -fPIC
 
-libfoo3.so:
-	cc -g -Wl,-Bsymbolic -Wl,-allow-shlib-undefined \
-    		-shared -fPIC -o libfoo3.so foo3.c
+lib%.so: %.o
+	${CC} ${LDFLAGS} -shared -o $@ $^
+
+libfoo3.so: foo3.o
+
+# libfoo2.so is built with -Bsymbolic, so the local reference to
+# xyz() will bind to the local definition inside the library.
+
+# By making libfoo3.so a dependency of libfoo2.so, we can observe that
+# -Bsymbolic in one library (libfoo2.so) does not have an effect for
+# a dependency of that library (libfoo3.so). (And thus, the reference
+# in libfoo3.so still binds to the definition in the main program.)
+
+libfoo2.so: foo2.o libfoo3.so
+	${CC} -g -Wl,-Bsymbolic -shared -o $@ $^
+
+# libfoo1.so is not built with -Bsymbolic, so the local reference to
+# xyz() can be interposed from another object.
+
+libfoo1.so: foo1.o
 
 clean:
 	${RM} ${TARGETS} *.o
-
